@@ -224,7 +224,7 @@ static void orderFood (int id)
     /* insert your code here */
     sh->fSt.st.clientStat[sh->fSt.tableFirst] = FOOD_REQUEST;
     saveState(nFic, &sh->fSt);
-    
+
     semUp(semgid, sh->waiterRequest); // falta fazer down neste semaforo -> cozinheiro?
 
     if (semUp (semgid, sh->mutex) == -1)                                                      /* exit critical region */
@@ -233,11 +233,8 @@ static void orderFood (int id)
     }
 
     /* insert your code here */
-    // sh->fSt.foodRequest = 1;
-    semDown(semgid, sh->waiterRequest);
-
-    
-    
+    sh->fSt.foodRequest = 1;
+    // semDown(semgid, sh->waiterRequest);
 }
 
 /**
@@ -257,10 +254,10 @@ static void waitFood (int id)
     }
 
     /* insert your code here */
-    if(sh->fSt.tableClients == TABLESIZE){
-        sh->fSt.st.clientStat[id] = WAIT_FOR_FOOD;
-        saveState(nFic, &sh->fSt);
-    }
+    // if(sh->fSt.tableClients == TABLESIZE){
+    sh->fSt.st.clientStat[id] = WAIT_FOR_FOOD;
+    saveState(nFic, &sh->fSt);
+    // }
 
     if (semUp (semgid, sh->mutex) == -1) {                                                  /* enter critical region */
         perror ("error on the down operation for semaphore access (CT)");
@@ -271,6 +268,8 @@ static void waitFood (int id)
     // sh->fSt.st.clientStat[id] = WAIT_FOR_FOOD;
     // saveState(nFic, &sh->fSt);
 
+    semUp(semgid, sh->foodArrived);
+
 
     if (semDown (semgid, sh->mutex) == -1) {                                                  /* enter critical region */
         perror ("error on the down operation for semaphore access (CT)");
@@ -278,8 +277,8 @@ static void waitFood (int id)
     }
 
     /* insert your code here */
-    // sh->fSt.st.clientStat[id] = EAT;
-    // saveState(nFic, &sh->fSt);
+    sh->fSt.st.clientStat[id] = EAT;
+    saveState(nFic, &sh->fSt);
     // semUp (semgid, sh->allFinished);
 
     if (semUp (semgid, sh->mutex) == -1) {                                                  /* enter critical region */
