@@ -167,38 +167,55 @@ static bool waitFriends(int id) // funcional
     }
 
     /* insert your code here */
-    sh->fSt.st.clientStat[id] = INIT;
-    saveState(nFic, &sh->fSt);
+    // sh->fSt.st.clientStat[id] = INIT;
+    // saveState(nFic, &sh->fSt);
 
     if(sh->fSt.tableClients == 0){
         sh->fSt.tableFirst = id;
         sh->fSt.tableClients = 0;
-        // semUp (semgid, sh->friendsArrived);
     }
 
     sh->fSt.tableClients++;
 
+    // if(sh->fSt.tableClients != TABLESIZE){
+    // sh->fSt.st.clientStat[id] = WAIT_FOR_FRIENDS;
+    // saveState(nFic, &sh->fSt);
+    // }
+
+    // else{
+    //     sh->fSt.tableLast = id;
+    //     sh->fSt.st.clientStat[id] = WAIT_FOR_FRIENDS;
+    //     saveState(nFic, &sh->fSt);
+    //     for (int i = 0; i < TABLESIZE; i++){
+    //         semUp (semgid, sh->friendsArrived);
+    //     }
+
+    //     first = true;
+    // }
+
+    sh->fSt.st.clientStat[id] = WAIT_FOR_FRIENDS;
+    saveState(nFic, &sh->fSt);
+
     if(sh->fSt.tableClients == TABLESIZE){
         sh->fSt.tableLast = id;
-        
-        // completar?
+
         for (int i = 0; i < TABLESIZE; i++){
             semUp (semgid, sh->friendsArrived);
         }
 
         first = true;
     }
-
-    sh->fSt.st.clientStat[id] = WAIT_FOR_FRIENDS;
-    saveState(nFic, &sh->fSt);
-
+    
     if (semUp (semgid, sh->mutex) == -1)                                                      /* exit critical region */
     { perror ("error on the up operation for semaphore access (CT)");
         exit (EXIT_FAILURE);
     }
 
     /* insert your code here */
-    semDown (semgid, sh->friendsArrived);
+    if (semUp (semgid, sh->friendsArrived) == -1) {                                                      
+        perror ("error on the up operation for receptionistReq semaphore access (GR)");
+        exit (EXIT_FAILURE);
+    }
 
     return first;
 }
@@ -222,10 +239,11 @@ static void orderFood (int id)
     }
 
     /* insert your code here */
-    sh->fSt.st.clientStat[sh->fSt.tableFirst] = FOOD_REQUEST;
-    saveState(nFic, &sh->fSt);
+    // semUp(semgid, sh->waiterRequest);
 
-    semUp(semgid, sh->waiterRequest); // falta fazer down neste semaforo -> cozinheiro?
+    sh->fSt.st.clientStat[sh->fSt.tableFirst] = FOOD_REQUEST;
+    sh->waiterRequest = 1;
+    saveState(nFic, &sh->fSt);
 
     if (semUp (semgid, sh->mutex) == -1)                                                      /* exit critical region */
     { perror ("error on the up operation for semaphore access (CT)");
@@ -234,7 +252,11 @@ static void orderFood (int id)
 
     /* insert your code here */
     sh->fSt.foodRequest = 1;
-    // semDown(semgid, sh->waiterRequest);
+
+    if (semUp (semgid, sh->waiterRequest) == -1) {                                                      
+        perror ("error on the up operation for waiterRequest semaphore access (CT)");
+        exit (EXIT_FAILURE);
+    }
 }
 
 /**
@@ -254,9 +276,17 @@ static void waitFood (int id)
     }
 
     /* insert your code here */
-    // if(sh->fSt.tableClients == TABLESIZE){
+    // if(id != sh->fSt.tableFirst){
     sh->fSt.st.clientStat[id] = WAIT_FOR_FOOD;
     saveState(nFic, &sh->fSt);
+    //     sh->fSt.st.clientStat[id] = WAIT_FOR_FOOD;
+    //     saveState(nFic, &sh->fSt);
+
+    //     if (sh->fSt.foodRequest == 0){
+    //         sh->fSt.st.clientStat[id] = WAIT_FOR_FOOD;
+    //         saveState(nFic, &sh->fSt);
+    //         semUp(semgid, sh->foodArrived);
+    //     }
     // }
 
     if (semUp (semgid, sh->mutex) == -1) {                                                  /* enter critical region */
@@ -265,13 +295,15 @@ static void waitFood (int id)
     }
 
     /* insert your code here */
+    if (semDown (semgid, sh->foodArrived) == -1) {                                                  
+        perror ("error on the down operation for foodArrived semaphore access (CT)");
+        exit (EXIT_FAILURE);
+    }
     // sh->fSt.st.clientStat[id] = WAIT_FOR_FOOD;
     // saveState(nFic, &sh->fSt);
 
-    semUp(semgid, sh->foodArrived);
 
-
-    if (semDown (semgid, sh->mutex) == -1) {                                                  /* enter critical region */
+    if (semDown (semgid, sh->mutex) == -1) {                                                  /* exit critical region */
         perror ("error on the down operation for semaphore access (CT)");
         exit (EXIT_FAILURE);
     }
@@ -356,4 +388,3 @@ static void waitAndPay (int id)
         exit (EXIT_FAILURE);
     }
 }
-
